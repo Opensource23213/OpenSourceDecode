@@ -1,13 +1,11 @@
 package org.firstinspires.ftc.teamcode.pedroPathing.tuners_tests.pid;
 
-import static org.firstinspires.ftc.teamcode.pedroPathing.opmode.BTCLibrary.*;
 import static java.lang.Math.abs;
 
 import com.acmerobotics.dashboard.FtcDashboard;
 import com.acmerobotics.dashboard.config.Config;
 import com.acmerobotics.dashboard.telemetry.MultipleTelemetry;
 import com.arcrobotics.ftclib.controller.PIDController;
-import com.pedropathing.util.Constants;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 
@@ -22,7 +20,6 @@ import com.qualcomm.robotcore.hardware.DigitalChannel;
 
 import org.firstinspires.ftc.teamcode.pedroPathing.constants.FConstants;
 import org.firstinspires.ftc.teamcode.pedroPathing.constants.LConstants;
-import org.firstinspires.ftc.teamcode.pedroPathing.opmode.BTCLibrary;
 
 /**
  * This is the StraightBackAndForth autonomous OpMode. It runs the robot in a specified distance
