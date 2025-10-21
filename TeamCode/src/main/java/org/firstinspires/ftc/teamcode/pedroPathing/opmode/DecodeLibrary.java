@@ -1,50 +1,46 @@
 package org.firstinspires.ftc.teamcode.pedroPathing.opmode;
 
 import static java.lang.Math.abs;
-import static java.lang.Math.cos;
-import static java.lang.System.in;
 
 import com.acmerobotics.dashboard.config.Config;
 import com.arcrobotics.ftclib.controller.PIDController;
-import com.qualcomm.hardware.rev.RevColorSensorV3;
-import java.lang.Enum;
-import java.util.ArrayList;
-import java.util.List;
-
-import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
-import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
-import com.qualcomm.robotcore.hardware.AnalogInput;
-import com.qualcomm.robotcore.hardware.CRServo;
-import com.qualcomm.robotcore.hardware.DigitalChannel;
-import com.qualcomm.robotcore.hardware.I2cDeviceSynchSimple;
 import com.pedropathing.follower.Follower;
-import com.pedropathing.localization.Pose;
+import com.pedropathing.geometry.Pose;
 import com.qualcomm.hardware.limelightvision.LLResult;
 import com.qualcomm.hardware.limelightvision.Limelight3A;
 import com.qualcomm.hardware.rev.RevHubOrientationOnRobot;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
+import com.qualcomm.robotcore.hardware.AnalogInput;
+import com.qualcomm.robotcore.hardware.CRServo;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
+import com.qualcomm.robotcore.hardware.DigitalChannel;
 import com.qualcomm.robotcore.hardware.IMU;
 import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
-import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.Pose3D;
-import org.firstinspires.ftc.teamcode.pedroPathing.constants.FConstants;
-import org.firstinspires.ftc.teamcode.pedroPathing.constants.LConstants;
+import org.firstinspires.ftc.teamcode.pedroPathing.Constants;
+
+import java.util.ArrayList;
+import java.util.List;
 
 @Config
 //@Disabled
 public class DecodeLibrary extends OpMode {
+    public static double color = 0;
+    public static double angle_offset = 0;
+    public static double moving_offset = 30;
+    public static double robot_velocity_stop_shoot = 25;
+    public double old_dis = 0;
     public DcMotorEx intake = null;
     public spinny spinny = new spinny();
     public shooter shooter = new shooter();
     public turret turret = new turret();
     public CameraCode cameraCode = new CameraCode();
     public static double adjust = 6000;
-    public double flippy_up = 0.24;
-    public double flippy_down = .58;
+    public double flippy_up = 0.32;
+    public double flippy_down = .68;
     public double flippy_pos = flippy_up;
     public Servo flippy = null;
     public static double sppeed = 0;
@@ -249,12 +245,13 @@ public class DecodeLibrary extends OpMode {
             nowbutton.clear();
         }
         public void ButtonControl(){
-            if (nowbutton.contains("r1")) {
-                intake.setPower(1);
-            } if (nowbutton.contains("l1")) {
+            if (nowbutton.contains("l1")) {
                 intake.setPower(-1);
             }if(nowbutton.contains("a")){
                 intake.setPower(0);
+            }
+            if(nowbutton.contains("r1")){
+                robot_going_forward = !robot_going_forward;
             }
             /*
 
@@ -265,36 +262,34 @@ public class DecodeLibrary extends OpMode {
 
 
              */
-            if(cameraCode.robot_auto_on){
-                flippy_pos = flippy_up;
-            }else{
-                if((spinny.intakeswitch1.getState() && spinny.switchwaspressed) || nowbutton.contains("r2")) {
-                    spinny.position -= 1;
-                    spinny.switchwaspressed = false;
-                    shooter.rpms.add(shooter.shoot1.getVelocity());
-                    if(spinny.position > 3){
-                        spinny.position = 1;
-                    }else if(spinny.position < 1){
-                        spinny.position = 3;
-                    }
+            if(gamepad1.left_trigger > .4){
+                if(abs(follower.getVelocity().getMagnitude()) < robot_velocity_stop_shoot && gamepad1.right_trigger < .4 && turret.shootable) {
+                    flippy_pos = flippy_up;
+                }else{
+                    flippy_pos = flippy_down;
                 }
+
+            }else{
                 flippy_pos = flippy_down;
             }
-            if(lastbutton.contains("left")){
-                if(nowbutton.contains("left")) {
-                    flippy_pos = flippy_down;
-                    lastbutton.remove("left");
-                }
-            }else{
-                if(nowbutton.contains("left")) {
-                    flippy_pos = flippy_up;
-                    lastbutton.add("left");
+            if((spinny.intakeswitch1.getState() && spinny.intakeswitch2.getState() && spinny.switchwaspressed) || nowbutton.contains("r2")) {
+                spinny.position -= 1;
+                spinny.switchwaspressed = false;
+                shooter.rpms.add(shooter.shoot1.getVelocity());
+                if (spinny.position > 3) {
+                    spinny.position = 1;
+                } else if (spinny.position < 1) {
+                    spinny.position = 3;
                 }
             }
+
 
 
             if(lastbutton.contains("b")){
-                shooter.speed = 247.01 * cameraCode.distance_from_target + 1247.05;
+                if(old_dis > 0) {
+                    shooter.speed = 247.01 * (cameraCode.distance_from_target + (cameraCode.distance_from_target - old_dis) * moving_offset) + 1247.05;
+                }
+                old_dis = cameraCode.distance_from_target;
                 if(nowbutton.contains("b")) {
                     spinny.position = 1;
                     shooter.speed = 0;
@@ -385,10 +380,14 @@ public class DecodeLibrary extends OpMode {
     public DcMotor rear_right = null;
     public IMU imu;
     public boolean robot_going_forward = true;
+    public Follower follower;
     public void drive_init(){
-        //follower = new Follower(hardwareMap, FConstants.class, LConstants.class);
-        //follower.setPose(new Pose(0,0,0));
-        //follower.setHeadingOffset(Math.toRadians(0));
+        follower = Constants.createFollower(hardwareMap);
+        if (color == 0) {
+            follower.setPose(new Pose(0, 0, Math.toRadians(-90)));
+        }else {
+            follower.setPose(new Pose(0, 0, Math.toRadians(90)));
+        }
         front_left = hardwareMap.get(DcMotor.class, "leftFront");
         front_right = hardwareMap.get(DcMotor.class, "rightFront");
         rear_left = hardwareMap.get(DcMotor.class, "leftRear");
@@ -411,18 +410,20 @@ public class DecodeLibrary extends OpMode {
         rear_right.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
     }
     public void drive(){
-        double angle = 0;
+        follower.update();
+        Pose poseEstimate = follower.getPose();
+        double angle = poseEstimate.getHeading();
         double axial = 0;
         double lateral = 0;
-        double yaw = 0;
+        double yaw = 0; // set control to the sticks
+        axial = -gamepad1.left_stick_y;  // Note: pushing stick forward gives negative value
+        lateral = gamepad1.left_stick_x;
+        yaw = gamepad1.right_stick_x;
 
-        axial = -gamepad1.left_stick_y / (gamepad1.left_trigger + 1);  // Note: pushing stick forward gives negative value
-        lateral = gamepad1.left_stick_x / (gamepad1.left_trigger + 1);
-        yaw = gamepad1.right_stick_x / (gamepad1.left_trigger + 1);
 
         if (gamepad1.ps) {
             telemetry.addData("Yaw", "Resetting\n");
-            imu.resetYaw();
+            follower.setPose(new Pose(poseEstimate.getX(), poseEstimate.getY(), 0));
         }
 
         //elbow1.setPosition(servo1pose);
@@ -434,12 +435,14 @@ public class DecodeLibrary extends OpMode {
         double rightBackPower = (axial + lateral - yaw) * power_level;
 
         // If the sticks are being used
+
         double yaw_rad = /*orientation.getYaw(AngleUnit.RADIANS)*/angle + 3.14159 / 2;
         double temp = axial * Math.sin(yaw_rad) + lateral * Math.cos(yaw_rad);
         lateral = -axial * Math.cos(yaw_rad) + lateral * Math.sin(yaw_rad);
         //double temp = axial * Math.cos(yaw_rad) + lateral * Math.sin(yaw_rad);
         //lateral = -axial * Math.sin(yaw_rad) + lateral * Math.cos(yaw_rad);
         axial = temp;
+
         // Combie the joystick requests for each axis-motion to determine each wheel's power.
         // Set up a variable for each drive wheel to save the power level for telemetry.
 
@@ -463,9 +466,9 @@ public class DecodeLibrary extends OpMode {
         front_right.setPower(rightFrontPower);
         rear_left.setPower(leftBackPower);
         rear_right.setPower(rightBackPower);
-        if(leftBackPower + leftFrontPower + rightBackPower + rightFrontPower > 0){
+        if(leftBackPower + leftFrontPower + rightBackPower + rightFrontPower > 0 && abs(follower.getVelocity().getMagnitude()) > 30){
             robot_going_forward = true;
-        }else if(leftBackPower + leftFrontPower + rightBackPower + rightFrontPower < 0){
+        }else if(leftBackPower + leftFrontPower + rightBackPower + rightFrontPower < 0 && abs(follower.getVelocity().getMagnitude()) > 30){
             robot_going_forward = false;
         }
         telemetry.addData("Is the robot going forward?", robot_going_forward);
@@ -492,7 +495,11 @@ public class DecodeLibrary extends OpMode {
         public void init() {
             limelight = hardwareMap.get(Limelight3A.class,"limelight");
             limelight.start();
-            limelight.pipelineSwitch(4);
+            if(color == 0) {
+                limelight.pipelineSwitch(4);
+            }else{
+                limelight.pipelineSwitch(5);
+            }
             telemetry.setMsTransmissionInterval(11);
             limelight.start();
         }
@@ -505,12 +512,18 @@ public class DecodeLibrary extends OpMode {
                 y = botpose.getPosition().z;
                 r = Math.sqrt(x * x + y * y);
                 double B = Math.toRadians(180 - Math.toDegrees(angle));
-                angle = Math.toRadians(botpose.getOrientation().getPitch()) - Math.atan(x/y);
+                double other_angle = Math.toRadians(botpose.getOrientation().getPitch());
+                angle = other_angle  - Math.atan(x/y);
                 distance_from_target = Math.sqrt(r*r + tag_to_target_distance * tag_to_target_distance - 2 * r * tag_to_target_distance * Math.cos(B));
                 angle_from_target = Math.toDegrees(Math.asin((r * Math.sin(B)) / distance_from_target));
-                robot_angle = 45 - angle_from_target - 5;
+                robot_angle = 41 -  angle_from_target;
+
                 robot_x = distance_from_target * Math.cos(Math.toRadians(robot_angle)) - 6 * feet;
                 robot_y = 6 * feet - distance_from_target * Math.sin(Math.toRadians(robot_angle));
+                if(result.getFiducialResults().get(0).getFiducialId() == 24){
+                    robot_y = (distance_from_target * Math.cos(Math.toRadians(robot_angle)) - 6 * feet) * -1;
+                    robot_x = 6 * feet - distance_from_target * Math.sin(Math.toRadians(robot_angle));
+                }
                 robot_auto_on = ((robot_y >= robot_x && robot_y >= -robot_x && robot_y >= 0) || (abs(robot_y) * -1 <= robot_x - .8 && abs(robot_y) * -1 <= -robot_x - .8 && abs(robot_y) * -1 <= -.8));
                 telemetry.addData("Limelight xb:", x);
                 telemetry.addData("Limelight y:", y);
@@ -519,7 +532,7 @@ public class DecodeLibrary extends OpMode {
                 telemetry.addData("Robot distance from target:", distance_from_target);
                 telemetry.addData("Angle C:", angle_from_target);
                 telemetry.addData("Robot Angle:", robot_angle);
-                telemetry.addData("Robot X:", result.getTx());
+                telemetry.addData("Robot X:", robot_x);
                 telemetry.addData("Robot Y:", robot_y);
                 telemetry.addData("Robot in zone?:", robot_auto_on);
             }else{
@@ -544,7 +557,7 @@ public class DecodeLibrary extends OpMode {
         }
         public void shooting(){
             if((cameraCode.robot_y <= cameraCode.robot_x - .8 && cameraCode.robot_y <= -cameraCode.robot_x - .8 && cameraCode.robot_y <= -.8)){
-                speed = 6000;
+                speed = 2300;
             }
             shoot1.setVelocity(speed);
             shoot2.setVelocity(speed);
@@ -553,7 +566,7 @@ public class DecodeLibrary extends OpMode {
             }else{
                 position = .04;
             }
-            if(speed == 6000){
+            if(speed == 2300){
                 flap.setPosition(position);
             }else {
                 flap.setPosition(position + (speed - shoot1.getVelocity()) / adjust);
@@ -582,17 +595,22 @@ public class DecodeLibrary extends OpMode {
         public boolean moving = false;
         public double power = 0;
         public DigitalChannel intakeswitch1;
+        public DigitalChannel intakeswitch2;
         public boolean switchwaspressed = false;
         public double balls = 0;
+        public ElapsedTime flipoffset;
         public void initialize(){
             controller = new PIDController(p, i, d);
+            flipoffset = new ElapsedTime();
             spinny = hardwareMap.get(CRServo.class, "spinny");
             spinny2 = hardwareMap.get(CRServo.class, "spinny2");
             spinnypos = hardwareMap.get(AnalogInput.class, "spinnypos");
             intakeswitch1 = hardwareMap.get(DigitalChannel.class, "intakeswitch1");
+            intakeswitch2 = hardwareMap.get(DigitalChannel.class, "intakeswitch2");
             time.reset();
         }
         public void spin(){
+
             yo = abs(spinnypos.getVoltage() / 3.3) * 4800;
             if(time.milliseconds() > 20){
                 speed = abs(yo - old_speed);
@@ -619,9 +637,9 @@ public class DecodeLibrary extends OpMode {
                 spin_pos += 3600;
             }
             if(!robot_going_forward && flippy_pos == flippy_down) {
-                target = (position + .5) * 1200 + 200;
+                target = (position + .5) * 1200 + 400;
             }else{
-                target = position * 1200 + 200;
+                target = position * 1200 + 400;
             }
             if(target - spin_pos > 1800){
                 target -= 3600;
@@ -630,8 +648,11 @@ public class DecodeLibrary extends OpMode {
             double pid = controller.calculate(spin_pos, target);
             double ff = Math.cos(Math.toRadians(target)) * f;
             power = pid + ff;
+            if(power > .2){
+                power *= -1;
+            }
             if(abs(power) > .2 && !jammed && moving && speed < 1){
-                position += 1;
+                position -= 1;
                 if(position > 3){
                     position -= 3;
                 }
@@ -645,13 +666,13 @@ public class DecodeLibrary extends OpMode {
             if(abs(spin_pos - target) < 200 && !moving){
                 jammed = false;
             }
-            if(!intakeswitch1.getState()){
+            if(!intakeswitch1.getState() || !intakeswitch2.getState()){
                 switchwaspressed = true;
-
-            }
-            if(position == 0 || (gamepad1.left_trigger > .4 && cameraCode.robot_auto_on)){
+            }if(gamepad1.right_trigger > .4 && gamepad1.left_trigger > .4){
+                power = 1;
+            }else if(position == 0 || gamepad1.left_trigger > .4){
                 power = -1;
-                intake.setPower(1);
+                //intake.setPower(1);
 
             }else if(position == 4){
                 power = 0;
@@ -660,18 +681,22 @@ public class DecodeLibrary extends OpMode {
             spinny2.setPower(-power);
             telemetry.addData("spinny target", target);
             telemetry.addData("spinny position", spin_pos);
+            telemetry.addData("switch 1", intakeswitch1.getState());
+            telemetry.addData("switch 2", intakeswitch2.getState());
 
         }
     }
     public class turret{
         public PIDController controller;
 
-        public double p = 0.005, i = 0, d = 0;
-
-        public double f = 0.08;
+        public double p = .01, i = 0, d = .001;
+        public double f = 0;
         public DcMotorEx turret;
         public double limit = 90;
         public double turret_angle;
+        public double power;
+        public boolean zero = false;
+        public boolean shootable = false;
         public void initialize(){
             controller = new PIDController(p, i, d);
             turret = hardwareMap.get(DcMotorEx.class, "turret");
@@ -690,32 +715,47 @@ public class DecodeLibrary extends OpMode {
         public void turret_move(){
             double power = 0;
             double current_angle = turret.getCurrentPosition() / cameraCode.ticks_per_degree;
-            turret_angle = (current_angle + (imu.getRobotYawPitchRollAngles().getYaw() - 51));
-            if(cameraCode.result.isValid() || !gamepad1.touchpad) {
+            double turret_angle = (current_angle + (Math.toDegrees(follower.getHeading()) + 39)) + angle_offset;
+            if(cameraCode.result.isValid() && !gamepad1.touchpad) {
+                if(cameraCode.result.getFiducialResults().get(0).getFiducialId() == 24){
+                    turret_angle = (current_angle + (Math.toDegrees(follower.getHeading()) - 39));
+                }
                 if(abs(turret_angle) < 10){
-                    power = (cameraCode.result.getTx()) / 40 * -1;
+                    controller.setPID(p, i, d);
+                    double pid = controller.calculate((cameraCode.result.getTx()), 0);
+                    double ff = Math.cos(Math.toRadians(0)) * f;
+                    power = pid + ff;
+                    if(abs(cameraCode.result.getTx()) < 6){
+                        shootable = true;
+                    }else{
+                        shootable = false;
+                    }
                 }else {
-                    power = (cameraCode.result.getTx() - turret_angle / -10) / 40 * -1;
+                    controller.setPID(p, i, d);
+                    double pid = controller.calculate(cameraCode.result.getTx() - turret_angle / -10, 0);
+                    double ff = Math.cos(Math.toRadians(0)) * f;
+                    power = pid + ff;
+                    if(abs(cameraCode.result.getTx() - turret_angle / -10) < 6){
+                        shootable = true;
+                    }else{
+                        shootable = false;
+                    }
                 }
             }else{
                 if(gamepad1.touchpad){
-                    power = current_angle / 180 * -1;
+                    zero = true;
+                }
+                if(zero){
+                    controller.setPID(p, i, d);
+                    double pid = controller.calculate(current_angle, 0);
+                    double ff = Math.cos(Math.toRadians(0)) * f;
+                    power = pid + ff;
+                    zero = false;
                 }else {
                     power = 0;
                 }
             }
-            if(power > .3){
-                power = .3;
-            }else if(power < -.3) {
-                power = -.3;
-            }
-            if(current_angle > limit || current_angle < -limit + 15){
-                if(turret.getCurrentPosition() < 0){
-                    power = .1;
-                }else{
-                    power = -.1;
-                }
-            }
+
             turret.setPower(power);
 
         }

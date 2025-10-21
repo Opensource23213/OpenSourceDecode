@@ -1,16 +1,12 @@
 package org.firstinspires.ftc.teamcode.pedroPathing.opmode;
 
 import com.acmerobotics.dashboard.config.Config;
-import com.arcrobotics.ftclib.controller.PIDController;
-import com.qualcomm.robotcore.eventloop.opmode.Disabled;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
-import com.qualcomm.robotcore.hardware.CRServo;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.Servo;
 
 @Config
-@Disabled
 @TeleOp(name="Shooter Test", group="ABC Opmode")
 
 public class ShooterTest extends DecodeLibrary{

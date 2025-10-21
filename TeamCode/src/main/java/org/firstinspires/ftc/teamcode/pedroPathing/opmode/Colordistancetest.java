@@ -1,15 +1,11 @@
 package org.firstinspires.ftc.teamcode.pedroPathing.opmode;
 
 import com.acmerobotics.dashboard.config.Config;
-import com.arcrobotics.ftclib.controller.PIDController;
-import com.qualcomm.robotcore.eventloop.opmode.Disabled;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
-import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DigitalChannel;
-import com.qualcomm.robotcore.hardware.Servo;
 
 @Config
-@Disabled
+
 @TeleOp(name="colortest", group="ABC Opmode")
 
 public class Colordistancetest extends DecodeLibrary{
@@ -33,19 +29,21 @@ public class Colordistancetest extends DecodeLibrary{
 
         config.setAnalogDigitalDevice(
                 1,
-                SRSHub.AnalogDigitalDevice.DIGITAL
+                SRSHub.AnalogDigitalDevice.ANALOG
+        );
+        config.setAnalogDigitalDevice(
+                2,
+                SRSHub.AnalogDigitalDevice.ANALOG
         );
         hub.init(config);
-        pin0 = hardwareMap.digitalChannel.get("pin0");
-        pin1 = hardwareMap.digitalChannel.get("pin1");
     }
     @Override
     public void loop(){
         hub.update();
-        double pin = hub.readAnalogDigitalDevice(1);
-        telemetry.addData("digital 0", pin0.getState());
-        telemetry.addData("digital 0", pin);
-        telemetry.addData("digital 1", pin1.getState());
+        double pin1 = hub.readAnalogDigitalDevice(1);
+        double pin2 = hub.readAnalogDigitalDevice(2);
+        telemetry.addData("analog 0", pin1);
+        telemetry.addData("analog 1", pin2);
         telemetry.update();
     }
 }
