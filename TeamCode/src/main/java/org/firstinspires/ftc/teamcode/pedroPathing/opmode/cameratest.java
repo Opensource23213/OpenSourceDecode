@@ -3,73 +3,82 @@ package org.firstinspires.ftc.teamcode.pedroPathing.opmode;
 import static java.lang.Math.abs;
 
 import com.acmerobotics.dashboard.config.Config;
-import com.arcrobotics.ftclib.controller.PIDController;
-import com.qualcomm.hardware.rev.RevHubOrientationOnRobot;
+import com.qualcomm.robotcore.eventloop.opmode.Disabled;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
+import com.qualcomm.robotcore.hardware.AnalogInput;
 import com.qualcomm.robotcore.hardware.DcMotor;
-import com.qualcomm.robotcore.hardware.IMU;
+import com.qualcomm.robotcore.hardware.DcMotorEx;
+import com.qualcomm.robotcore.hardware.Servo;
 
+import org.firstinspires.ftc.teamcode.pedroPathing.Constants;
+@Disabled
 @Config
 @TeleOp(name="CameraTest", group="ABC Opmode")
 
 public class cameratest extends DecodeLibrary{
-    public PIDController controller;
-
-    public static double p = 0.001, i = 0, d = 0;
-
-    public static double f = 0;
-
+    public static double servo_pose = .5;
     public static double power_mod = 35;
-    public static double angle_mod = 12;
+    public static double angle_mod = .9;
+    public Servo turret_servo_1;
+    public Servo turret_servo_2;
+    public AnalogInput turret_servo_pos;
+    public double turret_pos = 0;
+    public double analog_offset = .015;
+    public double servo_degrees = 90/.29;
+    public double turret_angle = 0;
+    public double target_angle = .5;
+    public static double max = 15;
+    public static double multiplier = 1.2;
+    public static double a_slow = 1.2;
     @Override
     public void init(){
-        initialize();
-        controller = new PIDController(p, i, d);
-        turret.turret.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
-        turret.turret.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-        RevHubOrientationOnRobot.LogoFacingDirection logoDirection = RevHubOrientationOnRobot.LogoFacingDirection.LEFT;
-        RevHubOrientationOnRobot.UsbFacingDirection  usbDirection  = RevHubOrientationOnRobot.UsbFacingDirection.UP;
-
-        RevHubOrientationOnRobot orientationOnRobot = new RevHubOrientationOnRobot(logoDirection, usbDirection);
-        // Initialize the IMU with this mounting orientation
-        imu.initialize(new IMU.Parameters(orientationOnRobot));
-        imu.resetYaw();
+        follower = Constants.createFollower(hardwareMap);
+        spindexer = hardwareMap.get(DcMotorEx.class, "spindexer");
+        flippy = hardwareMap.get(Servo.class, "flippy");
+        spindexer.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        intake = hardwareMap.get(DcMotorEx.class, "intake");
+        cameraCode.init();
+        drive_init();
+        sensors.initialize();
+        shooter.initialize();
+        turret_servo_1 = hardwareMap.get(Servo.class, "turret_servo_1");
+        turret_servo_2 = hardwareMap.get(Servo.class, "turret_servo_2");
+        turret_servo_pos = hardwareMap.get(AnalogInput.class, "turret_servo_pos");
     }
     @Override
-    public void loop(){
+    public  void loop(){
+        drive();
+        sensors.sense();
         cameraCode.camera_calculations();
         shooter.shooting();
-        shooter.speed = 6000;
-        double power = 0;
-        double current_angle = turret.turret.getCurrentPosition() / cameraCode.ticks_per_degree;
-        double turret_angle = (current_angle + (imu.getRobotYawPitchRollAngles().getYaw() - 51));
-        if(cameraCode.result.isValid() && !gamepad1.touchpad) {
-            if(cameraCode.result.getFiducialResults().get(0).getFiducialId() == 24){
-                turret_angle = (current_angle + (imu.getRobotYawPitchRollAngles().getYaw() + 51));
-            }
-            if(abs(turret_angle) < 10){
-                power = (cameraCode.result.getTx()) / 40 * -1;
-            }else {
-                if(cameraCode.result.getFiducialResults().get(0).getFiducialId() == 24){
-                    controller.setPID(p, i, d);
-                    double pid = controller.calculate(cameraCode.result.getTx() + turret_angle / -20, 0);
-                    double ff = Math.cos(Math.toRadians(0)) * f;
-                    power = pid + ff;
-                }else {
-                    controller.setPID(p, i, d);
-                    double pid = controller.calculate(cameraCode.result.getTx() - turret_angle / -10, 0);
-                    double ff = Math.cos(Math.toRadians(0)) * f;
-                    power = pid + ff;
-                }
-            }
+        turret_pos = (1 - (turret_servo_pos.getVoltage() + analog_offset));
+        turret_pos += (turret_pos - .5) * (.03/.26);
+        turret_angle = (turret_pos - .5) * servo_degrees;
+        cameraCode.camera_calculations();
+        double x = 0;
+        if(abs(cameraCode.result.getTx()) < max/2){
+            x = cameraCode.result.getTx() * a_slow;
         }else{
-            if(gamepad1.touchpad){
-                power = current_angle / 90 * -1;
-            }else {
-                power = 0;
+            if(abs(cameraCode.result.getTx()) < max){
+                x = cameraCode.result.getTx() * angle_mod;
+            }else{
+                x = cameraCode.result.getTx() * multiplier;
             }
         }
 
-        turret.turret.setPower(power);
+        if(cameraCode.result.isValid() && abs(turret_angle) < 90){
+            target_angle = (turret_angle + (x * angle_mod)) / servo_degrees + .5;
+        }else {
+            if(turret_angle > 90){
+                target_angle = (90) / servo_degrees + .5;
+            }else if(turret_angle < -90){
+                target_angle = (-90) / servo_degrees + .5;
+            }
+        }
+        turret_servo_1.setPosition(target_angle);
+        turret_servo_2.setPosition(target_angle);
+        telemetry.addData("Servo_position", turret_pos);
+        telemetry.addData("Turret Angle", turret_angle);
+        telemetry.update();
     }
 }

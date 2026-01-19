@@ -1,24 +1,14 @@
 package org.firstinspires.ftc.teamcode.pedroPathing.opmode;
 
-import static java.lang.Math.abs;
-
-import android.widget.Spinner;
-
 import com.acmerobotics.dashboard.config.Config;
-import com.arcrobotics.ftclib.controller.PIDController;
 import com.qualcomm.robotcore.eventloop.opmode.Disabled;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
-import com.qualcomm.robotcore.hardware.AnalogInput;
-import com.qualcomm.robotcore.hardware.CRServo;
-import com.qualcomm.robotcore.hardware.DcMotorSimple;
-import com.qualcomm.robotcore.hardware.Servo;
 
-
-@Config
 @Disabled
+@Config
 @TeleOp(name="SpinnyTest", group="ABC Opmode")
 public class SpinnyTest extends DecodeLibrary {
-    public static double p = 0.0002, i = 0, d = 0;
+    public static double p = 0.0003, i = 0, d = 0;
 
     public static double f = 0.01;
 
@@ -28,21 +18,24 @@ public class SpinnyTest extends DecodeLibrary {
         spinny.i = i;
         spinny.d = d;
         spinny.f = f;
+        drive_init();
         initialize();
-        telemetry.setMsTransmissionInterval(4);
+        telemetry.setMsTransmissionInterval(11);
     }
     @Override
     public void loop() {
-        if(gamepad1.a){
-            spinny.position = 1;
-        }else if(gamepad1.b){
-            spinny.position = 2;
-        }else if(gamepad1.dpad_up){
-            spinny.position = 3;
-        }else{
-            spinny.position = 0;
-        }
+        spinny.p = p;
+        spinny.i = i;
+        spinny.d = d;
+        spinny.f = f;
+        drive();
+        button1.button();
+        cameraCode.camera_calculations();
+        turret.turret_move();
+        sensors.sense();
         spinny.spin();
+        shooter.shooting();
+        flippy.setPosition(flippy_pos);
         telemetry.addData("target", spinny.target);
         telemetry.addData("position", spinny.spin_pos);
         telemetry.addData("turns", spinny.turns);

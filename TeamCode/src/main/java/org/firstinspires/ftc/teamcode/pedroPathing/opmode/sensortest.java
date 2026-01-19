@@ -1,33 +1,49 @@
 package org.firstinspires.ftc.teamcode.pedroPathing.opmode;
 
+import com.acmerobotics.dashboard.config.Config;
 import com.qualcomm.hardware.lynx.LynxI2cDeviceSynch;
 import com.qualcomm.hardware.rev.RevColorSensorV3;
+import com.qualcomm.robotcore.eventloop.opmode.Disabled;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.I2cDeviceSynchSimple;
 
 import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
-
-
+@Disabled
+@Config
 @TeleOp(name="sensorcalibrate", group="Calibrate")
 public class sensortest extends LinearOpMode {
+    public static int range = 300;
     @Override
+
     public void runOpMode() throws InterruptedException {
-        /*ColorRangefinder crf = new ColorRangefinder(hardwareMap.get(RevColorSensorV3.class, "Color"));
+        /*ColorRangefinder crf = new ColorRangefinder(hardwareMap.get(RevColorSensorV3.class, "colorfront1"));
         waitForStart();
+        crf.setI2cAddress(0x52);
+        crf.getCalibration();
+        crf.readDistance();
+        crf.setLedBrightness(999);
 
         crf.setPin0Digital(ColorRangefinder.DigitalMode.HSV, 160 / 360.0 * 255, 190 / 360.0 * 255); // purple
-        crf.setPin0DigitalMaxDistance(ColorRangefinder.DigitalMode.HSV, 20); // 10mm or closer requirement
-        crf.setPin1Digital(ColorRangefinder.DigitalMode.HSV, 110 / 360.0 * 255, 140 / 360.0 * 255); // green
-        crf.setPin1DigitalMaxDistance(ColorRangefinder.DigitalMode.HSV, 20); // 10mm or closer requirement
-        */
+        crf.setPin0DigitalMaxDistance(ColorRangefinder.DigitalMode.HSV, 30); // 10mm or closer requirement
+        crf.setPin1DigitalMaxDistance(ColorRangefinder.DigitalMode.DISTANCE, 100);
+        crf.setPin1Digital(ColorRangefinder.DigitalMode.DISTANCE, 0, 30); // green
+           */
 
-        LaserRangefinder lrf = new LaserRangefinder(hardwareMap.get(RevColorSensorV3.class, "Color"));
+        LaserRangefinder lrf = new LaserRangefinder(hardwareMap.get(RevColorSensorV3.class, "colorfront1"));
+        lrf.setI2CAddress(0x52);
         waitForStart();
+        lrf.getROI();
+        lrf.getPin0Mode();
         lrf.setDistanceMode(LaserRangefinder.DistanceMode.SHORT);
         lrf.setTiming(10,0);
-        lrf.setPin0Analog(0, 350);
-        lrf.setPin1Analog(0, 250);
+        lrf.setPin0Digital(0, 75);
+        lrf.setPin1Digital(0, range);
+        lrf.getScanDistance(DistanceUnit.MM);
+        telemetry.addData("", lrf.getStatus());
+        telemetry.update();
+        sleep(1000);
+        lrf.getDistance(DistanceUnit.MM);
 
     }
 }

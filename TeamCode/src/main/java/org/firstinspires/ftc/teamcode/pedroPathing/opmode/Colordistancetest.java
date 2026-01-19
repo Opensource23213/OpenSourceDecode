@@ -1,49 +1,34 @@
 package org.firstinspires.ftc.teamcode.pedroPathing.opmode;
 
 import com.acmerobotics.dashboard.config.Config;
+import com.qualcomm.robotcore.eventloop.opmode.Disabled;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
+import com.qualcomm.robotcore.hardware.AnalogInput;
 import com.qualcomm.robotcore.hardware.DigitalChannel;
 
 @Config
-
+@Disabled
 @TeleOp(name="colortest", group="ABC Opmode")
 
 public class Colordistancetest extends DecodeLibrary{
-    public DigitalChannel pin0;
-    public DigitalChannel pin1;
-    public SRSHub hub;
+    public AnalogInput apin0;
+    public AnalogInput apin1;
+    public DigitalChannel sensor;
+    public static double red = 0;
+    public static double green = 0;
+    public static double blue = 0;
+    public static double alpha = 0;
+    public static double distance = 0;
     @Override
     public void init(){
-        hub = hardwareMap.get(SRSHub.class, "hub");
-        SRSHub.Config config = new SRSHub.Config();
-
-        config.setEncoder(
-                1,
-                SRSHub.Encoder.PWM
-        );
-
-        config.setEncoder(
-                2,
-                SRSHub.Encoder.QUADRATURE
-        );
-
-        config.setAnalogDigitalDevice(
-                1,
-                SRSHub.AnalogDigitalDevice.ANALOG
-        );
-        config.setAnalogDigitalDevice(
-                2,
-                SRSHub.AnalogDigitalDevice.ANALOG
-        );
-        hub.init(config);
+        sensor = hardwareMap.get(DigitalChannel.class, "apin0");
+// set the clock speed on this I2C bus to 400kHz:
+        telemetry.setMsTransmissionInterval(11);
     }
     @Override
     public void loop(){
-        hub.update();
-        double pin1 = hub.readAnalogDigitalDevice(1);
-        double pin2 = hub.readAnalogDigitalDevice(2);
-        telemetry.addData("analog 0", pin1);
-        telemetry.addData("analog 1", pin2);
+        telemetry.addData("g: ", sensor.getState());
+
         telemetry.update();
     }
 }

@@ -41,11 +41,11 @@ public class Constants {
             .centripetalScaling(.0001)
             .translationalPIDFCoefficients(new PIDFCoefficients(0.1, 0, 0.025, 0))
             .headingPIDFCoefficients(new PIDFCoefficients(3, 0, 0.35, 0.003))
-            .drivePIDFCoefficients(new FilteredPIDFCoefficients(.2, 0, 0.03, 0.06, 12))
-            .automaticHoldEnd(false)
-            .mass(5);
+            .drivePIDFCoefficients(new FilteredPIDFCoefficients(.23, 0, 0.06, 0.06, 12))
+            .automaticHoldEnd(true)
+            .mass(11.8);
 
-    public static PathConstraints pathConstraints = new PathConstraints(0.99, 100, 2, 10);
+    public static PathConstraints pathConstraints = new PathConstraints(0.99, 100, 20, 2);
 
     public static Follower createFollower(HardwareMap hardwareMap) {
         return new FollowerBuilder(followerConstants, hardwareMap)
