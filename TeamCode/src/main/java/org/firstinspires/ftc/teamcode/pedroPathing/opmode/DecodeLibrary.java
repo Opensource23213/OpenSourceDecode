@@ -32,6 +32,9 @@ import java.util.List;
 //@Disabled
 public class DecodeLibrary extends OpMode {
     public static double color = 0;
+    public double robot_x = 0;
+    public double robot_y = 0;
+    public double robot_heading = 0;
     public static double speed_far = 1260;
     public boolean manual_turret = false;
     public static double launch_angle = 30;
@@ -616,7 +619,7 @@ public class DecodeLibrary extends OpMode {
             shoot1.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
         }
         public void shooting() {
-            if (follower.getPose().getX() < 48 && teleop) {
+            if (robot_x < 48 && teleop) {
                 /*speed = speed_far;
                 position = .6;
                 far_shooting = true;*/
@@ -633,17 +636,7 @@ public class DecodeLibrary extends OpMode {
             }
             shoot2.setVelocity(speed);
             shoot1.setVelocity(speed);
-            speed_difference = abs(shoot1.getVelocity() - speed);
-            if (speed_difference <= 20) {
-                ShootLight.setPosition(1);
-            } else {
-                ShootLight.setPosition(0);
-            }
-            if (shoot1.getVelocity() >= old_velocity) {
-                flap_velocity = shoot1.getVelocity();
-            }
-            old_velocity = shoot1.getVelocity();
-            flap.setPosition(position + (speed - flap_velocity) / 100 * adjust);
+            flap.setPosition(position);
         }
     }
     public class spinny{
@@ -818,47 +811,21 @@ public class DecodeLibrary extends OpMode {
         public void initialize(){
             turret_servo_1 = hardwareMap.get(Servo.class, "turret_servo_1");
             turret_servo_2 = hardwareMap.get(Servo.class, "turret_servo_2");
-            turret_servo_pos = hardwareMap.get(AnalogInput.class, "turret_servo_pos");
+            turret_servo_1.setDirection(Servo.Direction.REVERSE);
+            turret_servo_2.setDirection(Servo.Direction.REVERSE);
+            //turret_servo_pos = hardwareMap.get(AnalogInput.class, "turret_servo_pos");
         }
         public void turret_move(){
-            turret_pos = (1 - (turret_servo_pos.getVoltage() + analog_offset));
-            turret_pos += (turret_pos - .5) * (.03/.26);
-            current_angle = (turret_pos - .5) * servo_degrees;
-            turret_angle = (-current_angle + (Math.toDegrees(follower.getHeading())) + 39) + angle_offset;
 
-            if(cameraCode.result.isValid() && !gamepad1.touchpad && !zero && 1==0) {
-                if(cameraCode.result.getFiducialResults().get(0).getFiducialId() == 24){
-                    turret_angle = (-current_angle + (Math.toDegrees(follower.getHeading())) + 39) + angle_offset;
-                }
-                if(color == 0) {
-                    turret_target = (cameraCode.result.getTx() - turret_angle / shoot_offset * (4-cameraCode.distance_from_target));
-                }else{
-                    turret_target = (cameraCode.result.getTx() - turret_angle / -shoot_offset * (4-cameraCode.distance_from_target));
-                }
-                double x = 0;
-                if(abs(turret_target) < max/2){
-                    x = turret_target * a_slow;
-                }else{
-                    if(abs(turret_target) < max){
-                        x = turret_target * angle_mod;
-                    }else{
-                        x = turret_target * multiplier;
-                    }
-                }
-
-                target_angle = (current_angle + (x * angle_mod)) / servo_degrees + .5;
-
+            dead_wheel_calculations();
+            if(zero){
+                target_angle = manual_angle / servo_degrees + .5;
             }else{
-                dead_wheel_calculations();
-                if(zero){
-                    target_angle = manual_angle / servo_degrees + .5;
-                }else{
-                    double angle = Math.toDegrees(follower.getHeading());
-                    angle = dead_angle + angle;
-                    target_angle = (angle) / servo_degrees + .5;
-                }
-                zero = false;
+                double angle = Math.toDegrees(follower.getHeading());
+                angle = dead_angle + angle;
+                target_angle = (angle) / servo_degrees + .5;
             }
+            zero = false;
             if((target_angle - .5) * servo_degrees > limit){
                 target_angle = (limit - 2) / servo_degrees + .5;
             }else if((target_angle - .5) * servo_degrees < -limit + 60){
@@ -867,8 +834,8 @@ public class DecodeLibrary extends OpMode {
             if(manual_turret){
                 target_angle = .5;
             }
-            turret_servo_1.setPosition(target_angle - (4 / servo_degrees));
-            turret_servo_2.setPosition(target_angle - (4 / servo_degrees));
+            turret_servo_1.setPosition(target_angle - (4 / servo_degrees) + .0075);
+            turret_servo_2.setPosition(target_angle - (4 / servo_degrees) - .0075);
 
 
         }
@@ -881,10 +848,10 @@ public class DecodeLibrary extends OpMode {
     public void dead_wheel_calculations(){
         Pose location = new Pose();
         if(color == 0){
-            location = new Pose((130 + x_mod) - follower.getPose().getX(), (52.2 + y_mod) - follower.getPose().getY(), follower.getPose().getHeading());
+            location = new Pose((130 + x_mod) - robot_x, (52.2 + y_mod) - robot_y, robot_heading);
 
         }else{
-             location = new Pose((130 + x_mod) - follower.getPose().getX(), (52.2 + y_mod) + follower.getPose().getY(), follower.getPose().getHeading());
+             location = new Pose((130 + x_mod) - robot_x, (52.2 + y_mod) + robot_y, robot_heading);
 
         }
         telemetry.update();
@@ -945,7 +912,7 @@ public class DecodeLibrary extends OpMode {
             front2 = colorfront2.getDistance(DistanceUnit.MM);
             back1 = colorback1.getDistance(DistanceUnit.MM);
             back2 = colorback2.getDistance(DistanceUnit.MM);
-            if((follower.getPose().getX() < 35 && balls.isEmpty()) || apin0.getState() || apin2.getState() || countfront.getState() || countback.getState() || ((colorfront() || colorback()) && balls.size() < 3)) {
+            if((robot_x < 35 && balls.isEmpty()) || apin0.getState() || apin2.getState() || countfront.getState() || countback.getState() || ((colorfront() || colorback()) && balls.size() < 3)) {
                 if (balls.size() >= 3) {
                     if(apin0.getState() || apin2.getState()|| countfront.getState() || countback.getState()) {
                         if(!gamepad1.a && teleop && gamepad1.left_trigger < .4){

@@ -5,7 +5,6 @@ import static java.lang.Math.abs;
 import com.acmerobotics.dashboard.config.Config;
 import com.arcrobotics.ftclib.controller.PIDController;
 import com.qualcomm.hardware.rev.RevHubOrientationOnRobot;
-import com.qualcomm.robotcore.eventloop.opmode.Disabled;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.AnalogInput;
 import com.qualcomm.robotcore.hardware.CRServo;
@@ -16,17 +15,16 @@ import com.qualcomm.robotcore.util.ElapsedTime;
 
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 
-@Disabled
 @Config
 @TeleOp(name="SwerveTest", group="ABC Opmode")
 public class SwerveTest extends DecodeLibrary {
     public static double fr_offset = 1050;
-    public static double fl_offset = -1350;
-    public static double rr_offset = -900;
-    public static double rl_offset = -160;
-    public static double p = .001, i = 0, d = .00005;
+    public static double fl_offset = 1410;
+    public static double rr_offset = 250;
+    public static double rl_offset = 230;
+    public static double p = .001, i = 0, d = .00004;
 
-    public static double f = 0;
+    public static double f = 0.1;
     public swerve_drive chassis = new swerve_drive();
 
     public IMU imu = null;
@@ -102,6 +100,7 @@ public class SwerveTest extends DecodeLibrary {
                     wheel_pos -= 3600;
                 }
                 target = position * 10;
+
                 if(abs(target - wheel_pos) > 900 && abs(target - wheel_pos) < 2700){
                     target -= 1800;
                     wheel_power *= -1;
@@ -189,16 +188,6 @@ public class SwerveTest extends DecodeLibrary {
             fl.move(fl_offset, 1);
             rr.move(rr_offset, 1);
             rl.move(rl_offset, 1);
-
-            telemetry.addData("Front Right Speed", frs);
-            telemetry.addData("Front Left Speed", fls);
-            telemetry.addData("Rear Right Speed", rrs);
-            telemetry.addData("Rear Left Speed", rls);
-            telemetry.addData("Front Right Angle", fra);
-            telemetry.addData("Front Left Angle", fla);
-            telemetry.addData("Rear Right Angle", rra);
-            telemetry.addData("Rear Left Angle", rla);
-
             telemetry.update();
         }
     }
