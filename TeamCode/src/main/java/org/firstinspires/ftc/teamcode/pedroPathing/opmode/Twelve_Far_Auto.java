@@ -321,12 +321,12 @@ public class Twelve_Far_Auto extends DecodeLibrary{
                     spindexer.setPower(1);
                     flippy_pos = flippy_up;
                 }*/
-            }else if(steps == .5 && shooting_time.milliseconds() > 300){
+            }else if(steps == .5 && shooting_time.milliseconds() > 100){
                 shooting_time.reset();
                 steps = 1;
-                spindexer.setPower(.7);
+                spindexer.setPower(1);
                 flippy_pos = flippy_up;
-            }else if(steps == 1 && shooting_time.milliseconds() > 1500){
+            }else if(steps == 1 && shooting_time.milliseconds() > 980){
                 steps = 2;
                 sensors.sorted = false;
             }

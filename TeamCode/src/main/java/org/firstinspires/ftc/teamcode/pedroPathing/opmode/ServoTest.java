@@ -10,17 +10,15 @@ import com.qualcomm.robotcore.hardware.Servo;
 public class ServoTest extends DecodeLibrary{
     public Servo servo1;
     public Servo servo2;
-    public static double test_pos = .5;
+    public static double test_pos = 0;
     public static double offset = .0075;
     @Override
     public void init(){
-        servo1 = hardwareMap.get(Servo.class, "turret_servo_1");
-        servo2 = hardwareMap.get(Servo.class, "turret_servo_2");
+        servo1 = hardwareMap.get(Servo.class, "flap");
     }
     @Override
     public void loop(){
-        servo1.setPosition(test_pos + offset);
-        servo2.setPosition(test_pos - offset);
+        servo1.setPosition(test_pos);
         telemetry.addData("Servo Position", test_pos);
         telemetry.update();
     }

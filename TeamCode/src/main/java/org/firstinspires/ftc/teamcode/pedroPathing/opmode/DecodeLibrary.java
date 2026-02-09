@@ -35,6 +35,7 @@ public class DecodeLibrary extends OpMode {
     public double robot_x = 0;
     public double robot_y = 0;
     public double robot_heading = 0;
+    public static boolean index_reverse = true;
     public static double speed_far = 1260;
     public boolean manual_turret = false;
     public static double launch_angle = 30;
@@ -43,7 +44,7 @@ public class DecodeLibrary extends OpMode {
     public DcMotorEx spindexer;
     public static Pose auto_pose = new Pose();
     public static double tele_offset = 0;
-    public static double shoot_multiplier = 210;
+    public static double shoot_multiplier = 410;
 
     public List<Double> balls = new ArrayList<>();
     public static double pattern = 1;
@@ -57,8 +58,8 @@ public class DecodeLibrary extends OpMode {
     public turret turret = new turret();
     public sensors sensors = new sensors();
     public CameraCode cameraCode = new CameraCode();
-    public static double adjust = 0.02;
-    public double flippy_up = 0.35;
+    public static double adjust = 0.01;
+    public double flippy_up = 0.34;
     public static double flippy_hold = .53;
     public double  flippy_down = .71;
     public double flippy_pos = flippy_down;
@@ -83,12 +84,24 @@ public class DecodeLibrary extends OpMode {
     }
 
     public void initialize() {
-        if(color == 0){
-            x_mod = 2;
-            y_mod = -12;
-        }else{
-            x_mod = -3;
-            y_mod = 3;
+        if(teleop){
+            index_reverse = true;
+            if (color == 0) {
+                x_mod = 2;
+                y_mod = -15;
+            } else {
+                x_mod = -3;
+                y_mod = 3;
+            }
+        }else {
+            index_reverse = false;
+            if (color == 0) {
+                x_mod = 2;
+                y_mod = -12;
+            } else {
+                x_mod = -3;
+                y_mod = 3;
+            }
         }
         follower = Constants.createFollower(hardwareMap);
         intake = hardwareMap.get(DcMotorEx.class, "intake");
@@ -98,8 +111,10 @@ public class DecodeLibrary extends OpMode {
         ShootLight = hardwareMap.get(Servo.class, "ShootLight");
         spindexer = hardwareMap.get(DcMotorEx.class, "spindexer");
         spindexer.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
-        cameraCode = new CameraCode();
-        cameraCode.init();
+        if(!teleop) {
+            cameraCode = new CameraCode();
+            cameraCode.init();
+        }
         shooter.initialize();
         turret.initialize();
         sensors.initialize();
@@ -315,11 +330,8 @@ public class DecodeLibrary extends OpMode {
             if(gamepad2.touchpadWasPressed()){
                 manual_turret = true;
             }
-            if(cameraCode.result.isValid() && 1==0) {
-                shooter.speed = shoot_multiplier * ((cameraCode.distance_from_target) - 1.6) + shoot_power_offset;
-            }else{
-                shooter.speed = shoot_multiplier * ((dead_distance * .0254) - 1.6) + shoot_power_offset;
-            }
+            shooter.speed = shoot_multiplier * ((dead_distance * .0254) - 1.6) + shoot_power_offset;
+
             if(gamepad1.a){
                 intake.setPower(0);
             }
@@ -463,6 +475,11 @@ public class DecodeLibrary extends OpMode {
             currentrl = rear_left.getCurrent(CurrentUnit.AMPS);
         }
     }
+    public boolean freeze = false;
+    public double leftFrontPower = 0;
+    public double rightFrontPower = 0;
+    public double leftBackPower = 0;
+    public double rightBackPower = 0;
     public void drive(){
         follower.update();
         Pose poseEstimate = follower.getPose();
@@ -492,10 +509,6 @@ public class DecodeLibrary extends OpMode {
         //elbow1.setPosition(servo1pose);
         //elbow2.setPosition(servo2pose);
 
-        double leftFrontPower = (axial + lateral + yaw) * power_level;
-        double rightFrontPower = (axial - lateral - yaw) * power_level;
-        double leftBackPower = (axial - lateral + yaw) * power_level;
-        double rightBackPower = (axial + lateral - yaw) * power_level;
 
         // If the sticks are being used
 
@@ -525,15 +538,30 @@ public class DecodeLibrary extends OpMode {
             rightBackPower /= max;
         }//Arm code Shoulder
         if(gamepad1.left_trigger < .4 || sensors.last_time()) {
+            if(freeze){
+                follower.breakFollowing();
+            }
+            front_left.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+            front_right.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+            rear_left.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+            rear_right.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
             front_left.setPower(leftFrontPower);
             front_right.setPower(rightFrontPower);
             rear_left.setPower(leftBackPower);
             rear_right.setPower(rightBackPower);
+            freeze = false;
         }else{
-            front_left.setPower(0);
-            front_right.setPower(0);
-            rear_left.setPower(0);
-            rear_right.setPower(0);
+            if(!sensors.start_shoot){
+                front_left.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+                front_right.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+                rear_left.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+                rear_right.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+                front_left.setPower(0);
+                front_right.setPower(0);
+                rear_left.setPower(0);
+                rear_right.setPower(0);
+            }
+            freeze = true;
         }
 
 
@@ -619,7 +647,7 @@ public class DecodeLibrary extends OpMode {
             shoot1.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
         }
         public void shooting() {
-            if (robot_x < 48 && teleop) {
+            if (follower.getPose().getX() < 48 && teleop) {
                 /*speed = speed_far;
                 position = .6;
                 far_shooting = true;*/
@@ -636,7 +664,13 @@ public class DecodeLibrary extends OpMode {
             }
             shoot2.setVelocity(speed);
             shoot1.setVelocity(speed);
-            flap.setPosition(position);
+            speed_difference = abs(shoot1.getVelocity() - speed);
+            if (speed_difference <= 20) {
+                ShootLight.setPosition(1);
+            } else {
+                ShootLight.setPosition(0);
+            }
+            flap.setPosition(position + (speed_difference) / 100 * adjust);
         }
     }
     public class spinny{
@@ -811,13 +845,23 @@ public class DecodeLibrary extends OpMode {
         public void initialize(){
             turret_servo_1 = hardwareMap.get(Servo.class, "turret_servo_1");
             turret_servo_2 = hardwareMap.get(Servo.class, "turret_servo_2");
-            turret_servo_1.setDirection(Servo.Direction.REVERSE);
-            turret_servo_2.setDirection(Servo.Direction.REVERSE);
-            //turret_servo_pos = hardwareMap.get(AnalogInput.class, "turret_servo_pos");
+            turret_servo_pos = hardwareMap.get(AnalogInput.class, "turret_servo_pos");
         }
         public void turret_move(){
-
             dead_wheel_calculations();
+            double x = follower.getPose().getX();
+            double y = follower.getPose().getY();
+            if(color == 0) {
+                if (dead_distance * .0254 > 2.5 || x < y + 48 - 14.5 || x < -y + 48 - 14.5) {
+                    zero = true;
+                    manual_angle = 0;
+                }
+            }else{
+                if (dead_distance * .0254 > 2.5 || x < y + 48 - 14.5 || x < -y + 48 - 14.5) {
+                    zero = true;
+                    manual_angle = 0;
+                }
+            }
             if(zero){
                 target_angle = manual_angle / servo_degrees + .5;
             }else{
@@ -834,8 +878,8 @@ public class DecodeLibrary extends OpMode {
             if(manual_turret){
                 target_angle = .5;
             }
-            turret_servo_1.setPosition(target_angle - (4 / servo_degrees) + .0075);
-            turret_servo_2.setPosition(target_angle - (4 / servo_degrees) - .0075);
+            turret_servo_1.setPosition(target_angle - (4 / servo_degrees));
+            turret_servo_2.setPosition(target_angle - (4 / servo_degrees));
 
 
         }
@@ -848,13 +892,12 @@ public class DecodeLibrary extends OpMode {
     public void dead_wheel_calculations(){
         Pose location = new Pose();
         if(color == 0){
-            location = new Pose((130 + x_mod) - robot_x, (52.2 + y_mod) - robot_y, robot_heading);
+            location = new Pose((130 + x_mod) - follower.getPose().getX(), (52.2 + y_mod) - follower.getPose().getY(), follower.getPose().getHeading());
 
         }else{
-             location = new Pose((130 + x_mod) - robot_x, (52.2 + y_mod) + robot_y, robot_heading);
+            location = new Pose((130 + x_mod) - follower.getPose().getX(), (52.2 + y_mod) + follower.getPose().getY(), follower.getPose().getHeading());
 
         }
-        telemetry.update();
         if(location.getX() <= 0){
             dead_angle = 90;
         }else{
@@ -890,6 +933,8 @@ public class DecodeLibrary extends OpMode {
         public boolean middleisgreen = false;
         public boolean spin = false;
         public double sort_places = 0;
+        public boolean start_shoot = false;
+        Pose hold = null;
         public void initialize(){
             apin0 = hardwareMap.get(DigitalChannel.class, "apin1");
             apin2 = hardwareMap.get(DigitalChannel.class, "apin3");
@@ -912,8 +957,7 @@ public class DecodeLibrary extends OpMode {
             front2 = colorfront2.getDistance(DistanceUnit.MM);
             back1 = colorback1.getDistance(DistanceUnit.MM);
             back2 = colorback2.getDistance(DistanceUnit.MM);
-            if((robot_x < 35 && balls.isEmpty()) || apin0.getState() || apin2.getState() || countfront.getState() || countback.getState() || ((colorfront() || colorback()) && balls.size() < 3)) {
-                if (balls.size() >= 3) {
+            if((follower.getPose().getX() < 35 && balls.isEmpty()) || apin0.getState() || apin2.getState() || countfront.getState() || countback.getState() || ((colorfront() || colorback()) && balls.size() < 3)) {                if (balls.size() >= 3) {
                     if(apin0.getState() || apin2.getState()|| countfront.getState() || countback.getState()) {
                         if(!gamepad1.a && teleop && gamepad1.left_trigger < .4){
                             intake.setPower(-.5);
@@ -935,15 +979,24 @@ public class DecodeLibrary extends OpMode {
                 }
 
             }
-            if(gamepad1.left_trigger > .4 && follower.getVelocity().getMagnitude() < speed_shoot){
+            if(gamepad1.left_trigger > .4 && follower.getVelocity().getMagnitude() < 40){
                 balls.clear();
                 shooter.last_shot = shooter.speed;
                 flippy_pos = flippy_up;
                 intake.setPower(0);
                 spindexer.setPower(spin_speed);
+                if (!start_shoot && follower.getVelocity().getMagnitude() < 10) {
+                    hold = follower.getPose();
+                    start_shoot = true;
+                }
+                if(freeze && follower.getVelocity().getMagnitude() < 10){
+                    follower.holdPoint(hold);
+                }
             }else if(balls.size() >= 3){
+                start_shoot = false;
                 sort();
             }else{
+                start_shoot = false;
                 sorted = false;
                 sort_step = 0;
                 moving_steps = 0;
@@ -985,7 +1038,7 @@ public class DecodeLibrary extends OpMode {
                 if(sort_step == 0){
                     gamepad1.rumble(1000);
                     sort_time.reset();
-                    if(!gamepad1.a && teleop && gamepad1.left_trigger < .4) {
+                    if(!gamepad1.a && gamepad1.left_trigger < .4 && index_reverse) {
                         intake.setPower(-.5);
                     }
                     flippy_pos = flippy_hold;
@@ -1164,6 +1217,7 @@ public class DecodeLibrary extends OpMode {
 
         }
     }
+
 
 
 
